@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Administration | OTHARON</title>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<style>
+*{box-sizing:border-box}
+body{
+ margin:0;background:#07111f;color:#eaf4ff;
+ font-family:Arial,sans-serif;
+}
+header{
+ background:#0d1d31;padding:22px;
+ border-bottom:1px solid #164568;
+ display:flex;justify-content:space-between;
+ align-items:center;gap:15px;flex-wrap:wrap;
+}
+h1{margin:0;color:#36d9ff;font-size:23px}
+main{max-width:1100px;margin:auto;padding:22px}
+.card{
+ background:#102238;padding:22px;border-radius:12px;
+ margin-bottom:20px;border:1px solid #1d4260;
+}
+input,textarea,select{
+ width:100%;padding:12px;margin:8px 0 15px;
+ background:#071827;color:white;
+ border:1px solid #31516c;border-radius:7px;
+}
+textarea{min-height:120px}
+button{
+ background:#00bde8;color:#04121c;
+ border:0;padding:11px 17px;border-radius:7px;
+ cursor:pointer;font-weight:bold;margin:4px;
+}
+button:hover{opacity:.85}
+.secondary{background:#24445f;color:white}
+.danger{background:#bd394b;color:white}
+.hidden{display:none!important}
+.tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px}
+h2{color:#36d9ff}
+.item{
+ padding:15px;border:1px solid #294862;
+ border-radius:8px;margin:12px 0;
+ overflow-wrap:anywhere;
+}
+small{color:#a9c4d8}
+#message{padding:12px;color:#36d9ff}
+</style>
+</head>
+
+<body>
+
+<header>
+ <h1>OTHARON | ADMINISTRATION</h1>
+ <button id="logout" class="secondary hidden">Déconnexion</button>
+</header>
+
+<main>
+
+<div id="login" class="card">
+ <h2>Connexion administrateur</h2>
+
+ <form id="loginForm">
+  <label>Adresse e-mail</label>
+  <input id="email" type="email" required
+  placeholder="Votre adresse e-mail">
+
+  <label>Mot de passe</label>
+  <input id="password" type="password" required
+  placeholder="Votre mot de passe">
+
+  <button type="submit">Se connecter</button>
+ </form>
+</div>
+
+<div id="dashboard" class="hidden">
+
+ <div class="card">
+  <h2>Bienvenue dans OTHARON</h2>
+  <p>Espace de gestion de la plateforme OTHARON Labs.</p>
+  <div class="tabs">
+   <button onclick="showTab('publications')">Publications</button>
+   <button onclick="showTab('requests')">Collaborations</button>
+   <button onclick="showTab('images')">Images</button>
+  </div>
+ </div>
+
+ <section id="publications" class="card">
+  <h2>Gestion des publications</h2>
+
+  <form id="publicationForm">
+   <input type="hidden" id="pubId">
+
+   <label>Titre</label>
+   <input id="title" required>
+
+   <label>Catégorie</label>
+   <input id="category" placeholder="Actualités, Innovation...">
+
+   <label>Contenu</label>
+   <textarea id="content" required></textarea>
+
+   <label>Adresse de l'image de couverture</label>
+   <input id="cover" type="url">
+
+   <label>Statut</label>
+   <select id="status">
+    <option value="draft">Brouillon</option>
+    <option value="published">Publié</option>
+   </select>
+
+   <button type="submit">Enregistrer</button>
+   <button type="button" class="secondary"
+   onclick="resetForm()">Annuler</button>
+  </form>
+
+  <h2>Publications existantes</h2>
+  <div id="publicationList"></div>
+ </section>
+
+ <section id="requests" class="card hidden">
+  <h2>Demandes de collaboration</h2>
+  <div id="requestList"></div>
+ </section>
+
+ <section id="images" class="card hidden">
+  <h2>Bibliothèque d'images</h2>
+  <input type="file" id="imageFile"
+  accept="image/jpeg,image/png,image/webp">
+  <button onclick="uploadImage()">Envoyer l'image</button>
+  <div id="imageResult"></div>
+ </section>
+
+</div>
+
+<div id="message"></div>
+
+</main>
+
+<script>
+const SUPABASE_URL =
+"https://keiqindmkxecnxjmtmwz.supabase.co";
+
+const SUPABASE_KEY =
+"sb_publishable_cy5tp2JGmJyV5w74-f33OQ_Xpvpjymp";
+
+const db = window.supabase.createClient(
+ SUPABASE_URL,
+ SUPABASE_KEY
+);
+
+const $ = id => document.getElementById(id);
+
+function notify(text){
+ $("message").textContent = text;
+}
+
+function escapeHTML(value){
+ return String(value ?? "").replace(/[&<>"']/g, c => ({
+  "&":"&amp;",
+  "<":"&lt;",
+  ">":"&gt;",
+  '"':"&quot;",
+  "'":"&#39;"
+ })[c]);
+}
+
+function showTab(id){
+ ["publications","requests","images"].forEach(name=>{
+  $(name).classList.toggle("hidden",name!==id);
+ });
+}
+
+async function checkAdmin(){
+ const {data,error} = await db.rpc("is_otharon_admin");
+
+ if(error || data !== true){
+  throw new Error(
+   "Accès administrateur refusé. Vérifie ton rôle admin et reconnecte-toi."
+  );
+ }
+}
+
+async function enterDashboard(){
+ await checkAdmin();
+
+ $("login").classList.add("hidden");
+ $("dashboard").classList.remove("hidden");
+ $("logout").classList.remove("hidden");
+
+ await loadPublications();
+ await loadRequests();
+
+ notify("Connexion administrateur réussie.");
+}
+
+$("loginForm").addEventListener("submit",async e=>{
+ e.preventDefault();
+ notify("Connexion en cours...");
+
+ const {error} = await db.auth.signInWithPassword({
+  email:$("email").value.trim(),
+  password:$("password").value
+ });
+
+ if(error){
+  notify("Erreur : "+error.message);
+  return;
+ }
+
+ try{
+  await enterDashboard();
+ }catch(err){
+  await db.auth.signOut();
+  notify(err.message);
+ }
+});
+
+$("logout").addEventListener("click",async()=>{
+ await db.auth.signOut();
+ $("dashboard").classList.add("hidden");
+ $("login").classList.remove("hidden");
+ $("logout").classList.add("hidden");
+ notify("Déconnexion effectuée.");
+});
+
+function resetForm(){
+ $("publicationForm").reset();
+ $("pubId").value="";
+}
+
+function makeSlug(text){
+ return text.toLowerCase()
+ .normalize("NFD")
+ .replace(/[\u0300-\u036f]/g,"")
+ .replace(/[^a-z0-9]+/g,"-")
+ .replace(/^-|-$/g,"");
+}
+
+async function loadPublications(){
+ const {data,error} = await db
+ .from("publications")
+ .select("*")
+ .order("created_at",{ascending:false});
+
+ if(error){
+  notify("Erreur publications : "+error.message);
+  return;
+ }
+
+ $("publicationList").innerHTML =
+ (data||[]).map(p=>`
+  <div class="item">
+   <strong>${escapeHTML(p.title)}</strong><br>
+   <small>${escapeHTML(p.category)} |
+   ${escapeHTML(p.status)}</small><br>
+   <button onclick="editPublication('${p.id}')">
+    Modifier
+   </button>
+   <button class="danger"
+   onclick="deletePublication('${p.id}')">
+    Supprimer
+   </button>
+  </div>
+ `).join("") || "<p>Aucune publication.</p>";
+}
+
+$("publicationForm").addEventListener("submit",async e=>{
+ e.preventDefault();
+
+ const {data:{user}} = await db.auth.getUser();
+
+ const status = $("status").value;
+
+ const publication = {
+  title:$("title").value.trim(),
+  slug:makeSlug($("title").value),
+  category:$("category").value.trim(),
+  content:$("content").value.trim(),
+  cover_image_url:$("cover").value.trim() || null,
+  status,
+  updated_at:new Date().toISOString(),
+  published_at:status==="published"
+   ? new Date().toISOString()
+   : null
+ };
+
+ let result;
+
+ if($("pubId").value){
+  result = await db.from("publications")
+   .update(publication)
+   .eq("id",$("pubId").value);
+ }else{
+  publication.created_by=user.id;
+  result = await db.from("publications")
+   .insert(publication);
+ }
+
+ if(result.error){
+  notify("Erreur : "+result.error.message);
+  return;
+ }
+
+ notify("Publication enregistrée.");
+ resetForm();
+ await loadPublications();
+});
+
+async function editPublication(id){
+ const {data,error} = await db
+ .from("publications")
+ .select("*")
+ .eq("id",id)
+ .single();
+
+ if(error){
+  notify(error.message);
+  return;
+ }
+
+ $("pubId").value=data.id;
+ $("title").value=data.title||"";
+ $("category").value=data.category||"";
+ $("content").value=data.content||"";
+ $("cover").value=data.cover_image_url||"";
+ $("status").value=data.status;
+
+ showTab("publications");
+ window.scrollTo({top:0,behavior:"smooth"});
+}
+
+async function deletePublication(id){
+ if(!confirm("Supprimer cette publication ?"))return;
+
+ const {error} = await db
+ .from("publications")
+ .delete()
+ .eq("id",id);
+
+ if(error){
+  notify(error.message);
+  return;
+ }
+
+ notify("Publication supprimée.");
+ await loadPublications();
+}
+
+async function loadRequests(){
+ const {data,error} = await db
+ .from("collaboration_requests")
+ .select("*")
+ .order("created_at",{ascending:false});
+
+ if(error){
+  notify("Erreur demandes : "+error.message);
+  return;
+ }
+
+ $("requestList").innerHTML =
+ (data||[]).map(r=>`
+  <div class="item">
+   <strong>${escapeHTML(r.full_name)}</strong><br>
+   ${escapeHTML(r.email)}<br>
+   ${escapeHTML(r.organization)}<br>
+   <strong>${escapeHTML(r.subject)}</strong>
+   <p>${escapeHTML(r.message)}</p>
+   <small>Statut : ${escapeHTML(r.status)}</small>
+
+   <select id="request-${r.id}">
+    <option value="new">Nouvelle</option>
+    <option value="in_progress">En cours</option>
+    <option value="answered">Répondue</option>
+    <option value="closed">Fermée</option>
+   </select>
+
+   <button onclick="updateRequest('${r.id}')">
+    Mettre à jour
+   </button>
+  </div>
+ `).join("") || "<p>Aucune demande pour le moment.</p>";
+
+ (data||[]).forEach(r=>{
+  $("request-"+r.id).value=r.status;
+ });
+}
+
+async function updateRequest(id){
+ const status=$("request-"+id).value;
+
+ const {error}=await db
+ .from("collaboration_requests")
+ .update({status})
+ .eq("id",id);
+
+ if(error){
+  notify(error.message);
+  return;
+ }
+
+ notify("Statut de la demande mis à jour.");
+ await loadRequests();
+}
+
+async function uploadImage(){
+ const file=$("imageFile").files[0];
+
+ if(!file){
+  notify("Choisis une image.");
+  return;
+ }
+
+ const allowed=["image/jpeg","image/png","image/webp"];
+
+ if(!allowed.includes(file.type)){
+  notify("Format non autorisé.");
+  return;
+ }
+
+ if(file.size>5*1024*1024){
+  notify("Image trop volumineuse : maximum 5 Mo.");
+  return;
+ }
+
+ const {data:{user}}=await db.auth.getUser();
+
+ const path=user.id+"/"+Date.now()+"-"+file.name
+ .replace(/[^a-zA-Z0-9._-]/g,"_");
+
+ const {error}=await db.storage
+ .from("otharon-publications")
+ .upload(path,file,{
+  contentType:file.type,
+  upsert:false
+ });
+
+ if(error){
+  notify("Erreur image : "+error.message);
+  return;
+ }
+
+ const {data}=db.storage
+ .from("otharon-publications")
+ .getPublicUrl(path);
+
+ $("imageResult").innerHTML=
+  `<p>Image envoyée avec succès.</p>
+   <input readonly value="${escapeHTML(data.publicUrl)}">`;
+
+ notify("Image enregistrée.");
+}
+
+(async()=>{
+ const {data:{session}}=await db.auth.getSession();
+
+ if(session){
+  try{
+   await enterDashboard();
+  }catch(err){
+   await db.auth.signOut();
+   notify(err.message);
+  }
+ }
+})();
+</script>
+
+</body>
+</html>
