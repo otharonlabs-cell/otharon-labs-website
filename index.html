@@ -125,7 +125,60 @@ footer{
 }
 </style>
 </head>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
+<script>
+(async function () {
+    const db = window.supabase.createClient(
+        "https://keiqindmkxecnxjmtmwz.supabase.co",
+        "sb_publishable_cy5tp2JGmJyV5w74-f33OQ_Xpvpjymp"
+    );
+
+    const section = document.querySelector("#actualites .grid");
+    if (!section) return;
+
+    const { data, error } = await db
+        .from("publications")
+        .select("title, category, content, cover_image_url, published_at")
+        .eq("status", "published")
+        .order("published_at", { ascending: false });
+
+    if (error) {
+        console.error("Erreur de chargement OTHARON :", error);
+        return;
+    }
+
+    section.replaceChildren();
+
+    data.forEach(pub => {
+        const card = document.createElement("article");
+        card.className = "card publication";
+
+        const category = document.createElement("small");
+        category.textContent = pub.category || "OTHARON LABS";
+
+        const title = document.createElement("h3");
+        title.textContent = pub.title;
+
+        const content = document.createElement("p");
+        content.textContent = pub.content;
+
+        card.append(category, title, content);
+
+        if (pub.cover_image_url) {
+            const img = document.createElement("img");
+            img.src = pub.cover_image_url;
+            img.alt = pub.title;
+            img.loading = "lazy";
+            img.style.width = "100%";
+            img.style.borderRadius = "8px";
+            card.insertBefore(img, category);
+        }
+
+        section.appendChild(card);
+    });
+})();
+</script>
 <body>
 
 <header>
