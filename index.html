@@ -80,7 +80,26 @@ section{padding:85px 8%}
   color:var(--muted);font-size:17px;
 }
 .highlight{color:var(--cyan)}
-.publication small{color:var(--cyan)}
+.publication small{color:var(--cyan);display:block;margin-bottom:10px}
+.publication img{
+  width:100%;
+  max-height:220px;
+  object-fit:cover;
+  border-radius:8px;
+  margin-bottom:15px;
+}
+.publication-date{
+  display:block;
+  color:var(--muted);
+  font-size:12px;
+  margin-top:15px;
+}
+.empty-publications{
+  grid-column:1/-1;
+  text-align:center;
+  color:var(--muted);
+  padding:25px;
+}
 .contact-box{
   max-width:700px;margin:auto;text-align:center;
   background:var(--panel);border:1px solid var(--border);
@@ -125,60 +144,7 @@ footer{
 }
 </style>
 </head>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
-<script>
-(async function () {
-    const db = window.supabase.createClient(
-        "https://keiqindmkxecnxjmtmwz.supabase.co",
-        "sb_publishable_cy5tp2JGmJyV5w74-f33OQ_Xpvpjymp"
-    );
-
-    const section = document.querySelector("#actualites .grid");
-    if (!section) return;
-
-    const { data, error } = await db
-        .from("publications")
-        .select("title, category, content, cover_image_url, published_at")
-        .eq("status", "published")
-        .order("published_at", { ascending: false });
-
-    if (error) {
-        console.error("Erreur de chargement OTHARON :", error);
-        return;
-    }
-
-    section.replaceChildren();
-
-    data.forEach(pub => {
-        const card = document.createElement("article");
-        card.className = "card publication";
-
-        const category = document.createElement("small");
-        category.textContent = pub.category || "OTHARON LABS";
-
-        const title = document.createElement("h3");
-        title.textContent = pub.title;
-
-        const content = document.createElement("p");
-        content.textContent = pub.content;
-
-        card.append(category, title, content);
-
-        if (pub.cover_image_url) {
-            const img = document.createElement("img");
-            img.src = pub.cover_image_url;
-            img.alt = pub.title;
-            img.loading = "lazy";
-            img.style.width = "100%";
-            img.style.borderRadius = "8px";
-            card.insertBefore(img, category);
-        }
-
-        section.appendChild(card);
-    });
-})();
-</script>
 <body>
 
 <header>
@@ -194,6 +160,7 @@ footer{
 </header>
 
 <main>
+
 <section class="hero" id="accueil">
   <div class="tag">OTHARON LABS · TECHNOLOGIE · FUTUR</div>
   <h1>Penser plus loin.<br><span>Construire demain.</span></h1>
@@ -228,22 +195,26 @@ footer{
     <h2>Nos domaines d'exploration</h2>
     <p>Des technologies au service des idées.</p>
   </div>
+
   <div class="grid">
     <article class="card">
       <div class="icon">🤖</div>
       <h3>Intelligence artificielle</h3>
       <p>Conception de systèmes intelligents, assistants numériques et automatisation.</p>
     </article>
+
     <article class="card">
       <div class="icon">⚙️</div>
       <h3>Ingénierie</h3>
       <p>Étude, calcul et développement de solutions techniques et scientifiques.</p>
     </article>
+
     <article class="card">
       <div class="icon">💻</div>
       <h3>Développement logiciel</h3>
       <p>Création d'applications, d'outils numériques et de plateformes modernes.</p>
     </article>
+
     <article class="card">
       <div class="icon">🔬</div>
       <h3>Recherche & innovation</h3>
@@ -257,17 +228,20 @@ footer{
     <h2>Nos innovations</h2>
     <p>Des idées qui prennent progressivement forme.</p>
   </div>
+
   <div class="grid">
     <article class="card">
       <div class="icon">🧠</div>
       <h3>OTHARON</h3>
       <p>Un projet d'assistant intelligent conçu pour analyser, raisonner et accompagner les utilisateurs.</p>
     </article>
+
     <article class="card">
       <div class="icon">📱</div>
       <h3>Solutions numériques</h3>
       <p>Des concepts d'applications destinées à faciliter les activités et les usages quotidiens.</p>
     </article>
+
     <article class="card">
       <div class="icon">🏗️</div>
       <h3>Calcul & conception</h3>
@@ -281,22 +255,9 @@ footer{
     <h2>Actualités & publications</h2>
     <p>Les annonces et les nouveautés de OTHARON Labs.</p>
   </div>
-  <div class="grid">
-    <article class="card publication">
-      <small>ACTUALITÉ · OTHARON LABS</small>
-      <h3>Bienvenue sur notre vitrine officielle</h3>
-      <p>Découvrez notre vision, nos domaines d'exploration et nos ambitions technologiques.</p>
-    </article>
-    <article class="card publication">
-      <small>INNOVATION · TECHNOLOGIE</small>
-      <h3>Construire des solutions intelligentes</h3>
-      <p>Nous travaillons à transformer des idées ambitieuses en projets concrets.</p>
-    </article>
-    <article class="card publication">
-      <small>ANNONCE · COMMUNAUTÉ</small>
-      <h3>Collaborons pour le futur</h3>
-      <p>Vous avez une idée, un projet ou une proposition de collaboration ? Contactez-nous.</p>
-    </article>
+
+  <div class="grid" id="publications-list">
+    <p class="empty-publications">Chargement des publications...</p>
   </div>
 </section>
 
@@ -305,21 +266,25 @@ footer{
     <h2>Travaillons ensemble</h2>
     <p>Une question, une proposition ou un projet ? Parlons-en.</p>
   </div>
+
   <div class="contact-box">
     <h3 class="highlight">Contact OTHARON Labs</h3>
     <p style="color:var(--muted);margin-top:12px">
       Pour toute demande d'information ou de collaboration,
       écrivez-nous directement.
     </p>
+
     <a class="button"
        href="mailto:OTHARONlabs@gmail.com?subject=Contact%20-%20OTHARON%20Labs">
        Envoyer un message
     </a>
+
     <p style="margin-top:20px;color:var(--muted)">
       OTHARONlabs@gmail.com
     </p>
   </div>
 </section>
+
 </main>
 
 <footer>
@@ -331,17 +296,115 @@ footer{
 
 <div id="chat-box">
   <div class="chat-head">OTHARON · Assistant d'accueil</div>
+
   <div id="chat-messages">
     <div class="message">
       Bonjour ! Bienvenue chez OTHARON Labs.
       Comment puis-je vous renseigner sur nos activités ou une collaboration ?
     </div>
   </div>
+
   <form class="chat-input" id="chat-form">
     <input id="chat-input" placeholder="Écrivez votre message..." autocomplete="off">
     <button type="submit">➤</button>
   </form>
 </div>
+
+<!-- SUPABASE : CONNEXION AUX PUBLICATIONS -->
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<script>
+const SUPABASE_URL = "https://keiqindmkxecnxjmtmwz.supabase.co";
+
+const SUPABASE_KEY = "sb_publishable_cy5tp2JGmJyV5w74-f33OQ_Xpvpjymp";
+
+const db = window.supabase.createClient(
+  SUPABASE_URL,
+  SUPABASE_KEY
+);
+
+async function loadPublications() {
+  const container = document.getElementById("publications-list");
+
+  try {
+    const { data, error } = await db
+      .from("publications")
+      .select("title, category, content, cover_image_url, published_at")
+      .eq("status", "published")
+      .order("published_at", { ascending: false });
+
+    if (error) throw error;
+
+    container.replaceChildren();
+
+    if (!data || data.length === 0) {
+      const message = document.createElement("p");
+      message.className = "empty-publications";
+      message.textContent = "Aucune publication pour le moment.";
+      container.appendChild(message);
+      return;
+    }
+
+    data.forEach(pub => {
+      const card = document.createElement("article");
+      card.className = "card publication";
+
+      if (pub.cover_image_url) {
+        const image = document.createElement("img");
+        image.src = pub.cover_image_url;
+        image.alt = pub.title || "Publication OTHARON";
+        image.loading = "lazy";
+        card.appendChild(image);
+      }
+
+      const category = document.createElement("small");
+      category.textContent = pub.category || "OTHARON LABS";
+
+      const title = document.createElement("h3");
+      title.textContent = pub.title || "Publication OTHARON";
+
+      const content = document.createElement("p");
+      content.textContent = pub.content || "";
+
+      card.append(category, title, content);
+
+      if (pub.published_at) {
+        const date = document.createElement("time");
+        date.className = "publication-date";
+        date.dateTime = pub.published_at;
+
+        date.textContent = new Date(pub.published_at)
+          .toLocaleDateString("fr-FR", {
+            day: "numeric",
+            month: "long",
+            year: "numeric"
+          });
+
+        card.appendChild(date);
+      }
+
+      container.appendChild(card);
+    });
+
+  } catch (error) {
+    console.error("Erreur de chargement des publications :", error);
+
+    container.replaceChildren();
+
+    const message = document.createElement("p");
+    message.className = "empty-publications";
+    message.textContent = "Impossible de charger les publications pour le moment.";
+
+    container.appendChild(message);
+  }
+}
+
+loadPublications();
+
+</script>
+
+<!-- ASSISTANT D'ACCUEIL -->
 
 <script>
 document.getElementById("year").textContent = new Date().getFullYear();
@@ -353,13 +416,15 @@ const chatForm = document.getElementById("chat-form");
 const chatInput = document.getElementById("chat-input");
 
 chatButton.addEventListener("click", () => {
-  chatBox.style.display = chatBox.style.display === "block" ? "none" : "block";
+  chatBox.style.display =
+    chatBox.style.display === "block" ? "none" : "block";
 });
 
 function addMessage(text, className) {
   const div = document.createElement("div");
   div.className = "message " + className;
   div.textContent = text;
+
   chatMessages.appendChild(div);
   chatMessages.scrollTop = chatMessages.scrollHeight;
 }
@@ -370,24 +435,46 @@ function assistantReply(message) {
   if (text.includes("bonjour") || text.includes("salut")) {
     return "Bonjour et bienvenue chez OTHARON Labs ! Que souhaitez-vous découvrir ?";
   }
-  if (text.includes("collaboration") || text.includes("partenaire") || text.includes("partenariat")) {
+
+  if (
+    text.includes("collaboration") ||
+    text.includes("partenaire") ||
+    text.includes("partenariat")
+  ) {
     return "Merci pour votre intérêt. Pour une proposition de collaboration, écrivez à OTHARONlabs@gmail.com.";
   }
-  if (text.includes("contact") || text.includes("email") || text.includes("mail")) {
+
+  if (
+    text.includes("contact") ||
+    text.includes("email") ||
+    text.includes("mail")
+  ) {
     return "Vous pouvez contacter OTHARON Labs à l'adresse OTHARONlabs@gmail.com.";
   }
-  if (text.includes("intelligence") || text.includes("ia") || text.includes("assistant")) {
+
+  if (
+    text.includes("intelligence") ||
+    text.includes("ia") ||
+    text.includes("assistant")
+  ) {
     return "OTHARON explore l'intelligence artificielle, les assistants numériques et les systèmes intelligents.";
   }
-  if (text.includes("projet") || text.includes("innovation")) {
+
+  if (
+    text.includes("projet") ||
+    text.includes("innovation")
+  ) {
     return "OTHARON travaille sur des concepts technologiques, des outils numériques et des solutions d'ingénierie.";
   }
+
   return "Merci pour votre message ! Pour une demande précise, contactez notre équipe à OTHARONlabs@gmail.com.";
 }
 
 chatForm.addEventListener("submit", function(event) {
   event.preventDefault();
+
   const message = chatInput.value.trim();
+
   if (!message) return;
 
   addMessage(message, "user-message");
